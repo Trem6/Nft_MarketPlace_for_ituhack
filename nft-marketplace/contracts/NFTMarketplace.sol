@@ -15,10 +15,11 @@ contract NFTMarketplace is ERC721URIStorage {
     uint listPrice = 0.01 ether;
     uint deadline = 7 days;
     mapping(uint => ListedNFT) private idToListedToken;
+    mapping(uint => Order[]) private orders;
 
-    event TokenCreated(uint tokenID, uint price);
-    event TokenListed(uint id, address owner, address seller, uint price);
-    event NFTMinted();
+    event TokenCreated(uint tokenID);
+    event TokenListed(uint tokenId, address owner, address seller, uint price);
+    event Bid(uint tokenId, address bidder, uint price);
 
     enum Status {
         NonListed,
@@ -34,14 +35,16 @@ contract NFTMarketplace is ERC721URIStorage {
         Status status;
     }
 
+    struct Order {
+        address buyer;
+        uint price;
+    }
+
     constructor() ERC721("NFTMarketplace", "NFTM") {
         owner = payable(msg.sender);
     }
 
-    function createToken(
-        string memory _tokenURI,
-        uint _price
-    ) public returns (uint) {
+    function createToken(string memory _tokenURI) public returns (uint) {
         // increment tokenIds, mint, setURI, emit event
         _tokenIds.increment();
         uint newTokenID = _tokenIds.current();
@@ -54,13 +57,13 @@ contract NFTMarketplace is ERC721URIStorage {
             0,
             Status.NonListed
         );
-        emit TokenCreated(newTokenID, _price);
+        emit TokenCreated(newTokenID);
         return newTokenID;
     }
 
-    function listToken(uint _tokenId, uint _price) public payable {
+    function listToken(uint _tokenId, uint _price) public {
         // change bool to true, transfer the token to the contract
-        require(msg.value == listPrice, "not equal to list price");
+        require(_price == listPrice, "not equal to list price");
         require(_price > 0, "price < 0");
         idToListedToken[_tokenId].status = Status.Listed;
         idToListedToken[_tokenId].price = _price;
@@ -93,8 +96,76 @@ contract NFTMarketplace is ERC721URIStorage {
         return tokens;
     }
 
-    function executeSale(uint _tokenId) public view {
+    function executeSale(uint _tokenId) public {
         // transfer the token to buyer and transfer the money to the seller
         require(listPrice == idToListedToken[_tokenId].price, "no one bids");
+        require(
+            idToListedToken[_tokenId].seller == payable(msg.sender),
+            "not owner of the nft"
+        );
+
+        // updating the token state
+        idToListedToken[_tokenId].status = Status.Executed;
+        if (orders[_tokenId].length == 0)
+            // can be used (idToListedToken[_tokenId].price == listPrice)
+            return;
+
+        _tokenSold.increment();
+
+        Order memory highest = getHighestOrder(_tokenId);
+
+        // give the NFT to the buyer
+        _transfer(address(this), highest.buyer, _tokenId);
+        approve(address(this), _tokenId);
+
+        //give owner the price of the NFT
+        payable(owner).transfer(highest.price);
+
+        // payback function
+        payback(_tokenId);
+    }
+
+    function getHighestOrder(
+        uint _tokenId
+    ) private view returns (Order memory) {
+        Order[] memory currOrders = orders[_tokenId];
+        uint price = currOrders[0].price;
+        Order memory highestOrder = currOrders[0];
+        for (uint i = 0; i < currOrders.length; ++i) {
+            if (currOrders[i].price > price) {
+                price = currOrders[i].price;
+                highestOrder = currOrders[i];
+            }
+        }
+        return highestOrder;
+    }
+
+    function payback(uint _tokenId) private {
+        address seller = idToListedToken[_tokenId].seller;
+        for (uint i = 0; i < orders[_tokenId].length; ++i) {
+            address buyer = orders[_tokenId][i].buyer;
+            uint price = orders[_tokenId][i].price;
+            if (buyer != seller) payable(buyer).transfer(price); // give the money back to the bidder
+        }
+    }
+
+    function bid(uint _tokenId) public payable {
+        require(
+            msg.value > idToListedToken[_tokenId].price,
+            "price must be higher than old price"
+        );
+        require(
+            idToListedToken[_tokenId].status != Status.NonListed,
+            "non listed NFT"
+        );
+        require(
+            idToListedToken[_tokenId].status != Status.Executed,
+            "auction is over already"
+        );
+
+        Order memory newOrder = Order(msg.sender, msg.value);
+        orders[_tokenId].push(newOrder);
+
+        emit Bid(_tokenId, msg.sender, msg.value);
     }
 }
