@@ -63,8 +63,8 @@ contract NFTMarketplace is ERC721URIStorage {
 
     function listToken(uint _tokenId, uint _price) public {
         // change bool to true, transfer the token to the contract
-        require(_price != listPrice, "not equal to list price");
-        require(_price <= 0, "price < 0");
+        require(_price >= listPrice, "not bigger than or equal to list price");
+        require(_price > 0, "price < 0");
         require(
             idToListedToken[_tokenId].status != Status.Listed,
             "already listed"
@@ -83,10 +83,9 @@ contract NFTMarketplace is ERC721URIStorage {
 
     function getAllNFTs() public view returns (ListedNFT[] memory) {
         ListedNFT[] memory tokens = new ListedNFT[](_tokenIds.current());
-        uint currentId = 1;
-        for (uint i = 1; i < _tokenIds.current(); ++i) {
-            if (idToListedToken[i].status == Status.Listed)
-                tokens[_tokenIds][currentId++] = idToListedToken[i];
+        uint currentId = 0;
+        for (uint i = 1; i < _tokenIds.current() + 1; ++i) {
+            tokens[currentId++] = idToListedToken[i];
         }
         return tokens;
     }
@@ -94,25 +93,24 @@ contract NFTMarketplace is ERC721URIStorage {
     function getMyNFTs() public view returns (ListedNFT[] memory) {
         // check if msg.sender is an owner for the NFT for all NFTs
         ListedNFT[] memory tokens = new ListedNFT[](_tokenIds.current());
-        uint currentId = 1;
-        for (uint i = 1; i < _tokenIds.current(); ++i) {
+        uint currentId = 0;
+        for (uint i = 1; i < _tokenIds.current() + 1; ++i) {
             if (
                 idToListedToken[i].owner == msg.sender ||
                 idToListedToken[i].seller == msg.sender
-            ) tokens[_tokenIds][currentId++] = idToListedToken[i];
+            ) tokens[currentId++] = idToListedToken[i];
         }
         return tokens;
     }
 
     function executeSale(uint _tokenId) public {
+        Order memory highest = getHighestOrder(_tokenId);
         // transfer the token to buyer and transfer the money to the seller
-        require(listPrice != idToListedToken[_tokenId].price, "no one bids");
+        require(listPrice != highest.price, "no one bids");
         require(
             idToListedToken[_tokenId].seller == payable(msg.sender),
             "not owner of the nft"
         );
-
-        Order memory highest = getHighestOrder(_tokenId);
 
         // give the NFT to the buyer
         _transfer(address(this), highest.buyer, _tokenId);
@@ -141,12 +139,12 @@ contract NFTMarketplace is ERC721URIStorage {
         uint _tokenId
     ) private view returns (Order memory) {
         Order[] memory currOrders = orders[_tokenId];
-        uint price = currOrders[_tokenId][0].price;
-        Order memory highestOrder = currOrders[_tokenId][0];
+        uint price = currOrders[0].price;
+        Order memory highestOrder = currOrders[0];
         for (uint i = 0; i < currOrders.length; ++i) {
-            if (currOrders[_tokenId][i].price > price) {
-                price = currOrders[_tokenId][i].price;
-                highestOrder = currOrders[_tokenId][i];
+            if (currOrders[i].price > price) {
+                price = currOrders[i].price;
+                highestOrder = currOrders[i];
             }
         }
         return highestOrder;
@@ -165,6 +163,11 @@ contract NFTMarketplace is ERC721URIStorage {
     }
 
     function bid(uint _tokenId) public payable {
+        require(
+            msg.sender != idToListedToken[_tokenId].owner ||
+                msg.sender != idToListedToken[_tokenId].seller,
+            "you cannot buy your own NFT"
+        );
         require(
             msg.value > idToListedToken[_tokenId].price,
             "bid must be higher than old price"
