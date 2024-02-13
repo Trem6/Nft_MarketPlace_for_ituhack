@@ -63,8 +63,16 @@ contract NFTMarketplace is ERC721URIStorage {
 
     function listToken(uint _tokenId, uint _price) public {
         // change bool to true, transfer the token to the contract
-        require(_price == listPrice, "not equal to list price");
-        require(_price > 0, "price < 0");
+        require(_price != listPrice, "not equal to list price");
+        require(_price <= 0, "price < 0");
+        require(
+            idToListedToken[_tokenId].status != Status.Listed,
+            "already listed"
+        );
+        require(
+            msg.sender == idToListedToken[_tokenId].owner,
+            "you're not the owner"
+        );
         idToListedToken[_tokenId].status = Status.Listed;
         idToListedToken[_tokenId].price = _price;
         idToListedToken[_tokenId].owner = payable(address(this));
@@ -98,19 +106,11 @@ contract NFTMarketplace is ERC721URIStorage {
 
     function executeSale(uint _tokenId) public {
         // transfer the token to buyer and transfer the money to the seller
-        require(listPrice == idToListedToken[_tokenId].price, "no one bids");
+        require(listPrice != idToListedToken[_tokenId].price, "no one bids");
         require(
             idToListedToken[_tokenId].seller == payable(msg.sender),
             "not owner of the nft"
         );
-
-        // updating the token state
-        idToListedToken[_tokenId].status = Status.Executed;
-        if (orders[_tokenId].length == 0)
-            // can be used (idToListedToken[_tokenId].price == listPrice)
-            return;
-
-        _tokenSold.increment();
 
         Order memory highest = getHighestOrder(_tokenId);
 
@@ -119,7 +119,23 @@ contract NFTMarketplace is ERC721URIStorage {
         approve(address(this), _tokenId);
 
         //give owner the price of the NFT
-        payable(owner).transfer(highest.price);
+        // payable(idToListedToken[_tokenId].seller).transfer(highest.price);
+        (bool sent, ) = payable(idToListedToken[_tokenId].seller).call{
+            value: highest.price
+        }("");
+        require(sent, "Failed to send Ether");
+
+        _tokenSold.increment();
+
+        // setting the new owner
+        idToListedToken[_tokenId].owner = highest.buyer;
+        idToListedToken[_tokenId].seller = address(0);
+
+        // updating the token state
+        idToListedToken[_tokenId].status = Status.Executed;
+        if (orders[_tokenId].length == 0)
+            // can be used (idToListedToken[_tokenId].price == listPrice)
+            return;
 
         // payback function
         payback(_tokenId);
@@ -145,14 +161,17 @@ contract NFTMarketplace is ERC721URIStorage {
         for (uint i = 0; i < orders[_tokenId].length; ++i) {
             address buyer = orders[_tokenId][i].buyer;
             uint price = orders[_tokenId][i].price;
-            if (buyer != seller) payable(buyer).transfer(price); // give the money back to the bidder
+            if (buyer != seller) {
+                (bool sent, ) = payable(buyer).call{value: price}(""); // give the money back to the bidder
+                require(sent, "Failed to send Ether");
+            }
         }
     }
 
     function bid(uint _tokenId) public payable {
         require(
             msg.value > idToListedToken[_tokenId].price,
-            "price must be higher than old price"
+            "bid must be higher than old price"
         );
         require(
             idToListedToken[_tokenId].status != Status.NonListed,
