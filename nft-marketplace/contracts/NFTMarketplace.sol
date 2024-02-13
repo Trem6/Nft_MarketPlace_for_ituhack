@@ -83,10 +83,10 @@ contract NFTMarketplace is ERC721URIStorage {
 
     function getAllNFTs() public view returns (ListedNFT[] memory) {
         ListedNFT[] memory tokens = new ListedNFT[](_tokenIds.current());
-        uint currentId = 0;
+        uint currentId = 1;
         for (uint i = 1; i < _tokenIds.current(); ++i) {
-            if (idToListedToken[i - 1].status == Status.Listed)
-                tokens[currentId++] = idToListedToken[i - 1];
+            if (idToListedToken[i].status == Status.Listed)
+                tokens[_tokenIds][currentId++] = idToListedToken[i];
         }
         return tokens;
     }
@@ -94,12 +94,12 @@ contract NFTMarketplace is ERC721URIStorage {
     function getMyNFTs() public view returns (ListedNFT[] memory) {
         // check if msg.sender is an owner for the NFT for all NFTs
         ListedNFT[] memory tokens = new ListedNFT[](_tokenIds.current());
-        uint currentId = 0;
+        uint currentId = 1;
         for (uint i = 1; i < _tokenIds.current(); ++i) {
             if (
                 idToListedToken[i].owner == msg.sender ||
                 idToListedToken[i].seller == msg.sender
-            ) tokens[currentId++] = idToListedToken[i];
+            ) tokens[_tokenIds][currentId++] = idToListedToken[i];
         }
         return tokens;
     }
@@ -133,35 +133,31 @@ contract NFTMarketplace is ERC721URIStorage {
 
         // updating the token state
         idToListedToken[_tokenId].status = Status.Executed;
-        if (orders[_tokenId].length == 0)
-            // can be used (idToListedToken[_tokenId].price == listPrice)
-            return;
 
-        // payback function
-        payback(_tokenId);
+        if (orders[_tokenId].length > 1) payback(_tokenId);
     }
 
     function getHighestOrder(
         uint _tokenId
     ) private view returns (Order memory) {
         Order[] memory currOrders = orders[_tokenId];
-        uint price = currOrders[0].price;
-        Order memory highestOrder = currOrders[0];
+        uint price = currOrders[_tokenId][0].price;
+        Order memory highestOrder = currOrders[_tokenId][0];
         for (uint i = 0; i < currOrders.length; ++i) {
-            if (currOrders[i].price > price) {
-                price = currOrders[i].price;
-                highestOrder = currOrders[i];
+            if (currOrders[_tokenId][i].price > price) {
+                price = currOrders[_tokenId][i].price;
+                highestOrder = currOrders[_tokenId][i];
             }
         }
         return highestOrder;
     }
 
     function payback(uint _tokenId) private {
-        address seller = idToListedToken[_tokenId].seller;
+        address highestBuyer = getHighestOrder(_tokenId).buyer;
         for (uint i = 0; i < orders[_tokenId].length; ++i) {
             address buyer = orders[_tokenId][i].buyer;
             uint price = orders[_tokenId][i].price;
-            if (buyer != seller) {
+            if (buyer != highestBuyer) {
                 (bool sent, ) = payable(buyer).call{value: price}(""); // give the money back to the bidder
                 require(sent, "Failed to send Ether");
             }
