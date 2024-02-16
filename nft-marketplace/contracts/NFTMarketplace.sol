@@ -10,6 +10,7 @@ contract NFTMarketplace is ERC721URIStorage {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
     Counters.Counter private _tokenSold;
+    Counters.Counter private _collections;
 
     address payable owner;
     uint listPrice = 0.01 ether;
@@ -33,6 +34,7 @@ contract NFTMarketplace is ERC721URIStorage {
         address seller;
         uint price;
         Status status;
+        uint collection; // collection 0 = not in collection
     }
 
     struct Order {
@@ -44,7 +46,20 @@ contract NFTMarketplace is ERC721URIStorage {
         owner = payable(msg.sender);
     }
 
-    function createToken(string memory _tokenURI) public returns (uint) {
+    function createCollection(
+        string memory _tokenURI,
+        uint _size
+    ) public returns (uint) {
+        _collections.increment();
+        for (uint i = 0; i < _size; ++i)
+            createToken(_tokenURI, _collections.current());
+        return _collections.current();
+    }
+
+    function createToken(
+        string memory _tokenURI,
+        uint _collection
+    ) public returns (uint) {
         // increment tokenIds, mint, setURI, emit event
         _tokenIds.increment();
         uint newTokenID = _tokenIds.current();
@@ -55,7 +70,8 @@ contract NFTMarketplace is ERC721URIStorage {
             payable(msg.sender),
             address(0),
             0,
-            Status.NonListed
+            Status.NonListed,
+            _collection
         );
         emit TokenCreated(newTokenID);
         return newTokenID;
@@ -88,6 +104,31 @@ contract NFTMarketplace is ERC721URIStorage {
             tokens[currentId++] = idToListedToken[i];
         }
         return tokens;
+    }
+
+    function getCollectionNFTsAndInfo(
+        uint _collection
+    ) public view returns (ListedNFT[] memory, uint _floor, uint _high) {
+        ListedNFT[] memory tokens = new ListedNFT[](_tokenIds.current());
+        uint currentId = 0;
+        uint minPrice = 1000 ether;
+        uint maxPrice = 0;
+        for (uint i = 1; i < _tokenIds.current() + 1; ++i) {
+            if (idToListedToken[i].collection > _collection) break;
+            if (idToListedToken[i].collection == _collection) {
+                tokens[currentId++] = idToListedToken[i];
+                if (idToListedToken[i].price > maxPrice)
+                    maxPrice = idToListedToken[i].price;
+                if (idToListedToken[i].price < minPrice)
+                    minPrice = idToListedToken[i].price;
+            }
+        }
+        // shrinking the array
+        ListedNFT[] memory tokensLast = new ListedNFT[](currentId);
+        for (uint i = 0; i < currentId; ++i) tokensLast[i] = tokens[i];
+        delete tokens;
+
+        return (tokensLast, minPrice, maxPrice);
     }
 
     function getMyNFTs() public view returns (ListedNFT[] memory) {
