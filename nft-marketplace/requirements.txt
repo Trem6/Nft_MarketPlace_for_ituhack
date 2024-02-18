@@ -1,5 +1,5 @@
-npm install bootstrap --save
-npm install remixicon --save
-npm i ipfs-http-client@50.1.2 @babel/core --save
-npm install dotenv --save
-npm install --save @pinata/sdk
+npm install bootstrap
+npm install remixicon
+npm i ipfs-http-client@50.1.2 @babel/core
+npm install dotenv
+npm install @pinata/sdk

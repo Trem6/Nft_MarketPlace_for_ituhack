@@ -79,7 +79,7 @@ const Header = ({web3Handler, account}) => {
               <span>
                 <i class="ri-fire-fill"></i>
               </span>
-              NFTs
+              BlazeNFT
             </h2>
           </div>
 

@@ -19,6 +19,7 @@
     "react-scripts": "^3.0.1",
     "reactstrap": "^9.2.2",
     "remixicon": "^4.1.0",
+    "vercel": "^33.5.1",
     "web-vitals": "^2.1.0"
   },
   "scripts": {
