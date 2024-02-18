@@ -9,24 +9,37 @@ import { Container, Row, Col } from "reactstrap";
 import { ethers } from "ethers";
 import "../styles/market.css";
 
-const Market = ({ marketplace }) => {
+const Market = ({ marketplace, account }) => {
   const [data, setData] = useState();
   const [items, setItems] = useState([]);
   const [select, setSelect] = useState("all");
   useEffect(() => {
     const loadMarketplaceItems = async () => {
       let items = [];
-      let nfts = await marketplace.getAllNFTs();
+      let nfts = await marketplace.getListedNFTs();
       const itemCount = nfts.length;
       for (let i = 0; i < itemCount; ++i) {
         const item = nfts[i];
         const uri = await marketplace.tokenURI(item.id);
         const response = await fetch(uri);
         const metadata = await response.json();
+        let collectionCount = 1;
+        let number = 0;
+        let newName = metadata.name;
+        if (Number(item.collection) !== 0) {
+          if (collectionCount === Number(item.collection)) {
+            number++;
+          }
+          else {
+            number = 1;
+            collectionCount++;
+          }
+          newName = metadata.name + "#" + number;
+        }
         items.push({
           id: String(item.id),
           seller: item.seller,
-          name: metadata.name,
+          name: newName,
           description: metadata.description,
           image: metadata.image,
           price: ethers.utils.formatEther(item.price),
@@ -39,18 +52,16 @@ const Market = ({ marketplace }) => {
     }, [marketplace]);
 
     const handleItems = ((e) => {
-      setSelect(e.target.value);
       let filteredItems = [];
-
-      if (select === "single-item") {
-        filteredItems = items.filter((item) => item.collection === 0);
-      } else if (select === "bundle") {
-        filteredItems = items.filter((item) => item.collection !== 0);
+      if (e.target.value === "single-item") {
+        filteredItems = items.filter((item) => parseInt(item.collection) === 0);
+      } else if (e.target.value === "bundle") {
+        filteredItems = items.filter((item) => parseInt(item.collection) !== 0);
       } else {
         filteredItems = items;
       }
-
       setData(filteredItems);
+      setSelect(e.target.value);
     });
 
   return (
@@ -76,12 +87,12 @@ const Market = ({ marketplace }) => {
             </Col>
             {select === "all" ? (items && items.map((item) => (
                 <Col lg="3" md="4" sm="6" className="mb-4" key={item.id}>
-                  <NftCard item={item} />
+                  <NftCard item={item} marketplace={marketplace} account={account} />
                 </Col>
               ))) : (
                 (data && data.map((item) => (
                   <Col lg="3" md="4" sm="6" className="mb-4" key={item.id}>
-                    <NftCard item={item} />
+                    <NftCard item={item} marketplace={marketplace} account={account} />
                   </Col>
                 )))
               )}

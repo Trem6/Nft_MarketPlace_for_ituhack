@@ -5,9 +5,9 @@ import { ethers } from "ethers";
 
 const Modal = ({ setShowModal, item, marketplace }) => {
   const bid = async () => {
+    console.log(marketplace);
     const typedValue = document.getElementById("val").value;
-    console.log("modal item id", typedValue);
-    await marketplace.bid(item.id, {value: ethers.utils.parseEther(typedValue)});
+    await marketplace.bid(parseInt(item.id), {value: ethers.utils.parseUnits(typedValue, 18)});
   }
 
   return (
@@ -18,7 +18,7 @@ const Modal = ({ setShowModal, item, marketplace }) => {
         </span>
         <h6 className="text-center text-light">Place a Bid</h6>
         <p className="text-center text-light">
-          You must bid at least <span className="money">{item.price}</span>
+          You must bid more than <span className="money">{item.price} ETH</span>
         </p>
 
         <div className="input__item mb-4">
@@ -26,8 +26,8 @@ const Modal = ({ setShowModal, item, marketplace }) => {
         </div>
 
         <div className=" d-flex align-items-center justify-content-between">
-          <p>You must bid at least</p>
-          <span className="money">{item.price}</span>
+          <p>You must bid more than</p>
+          <span className="money">{item.price} ETH</span>
         </div>
 
         <button className="place__bid-btn" onClick={bid}>Place a Bid</button>

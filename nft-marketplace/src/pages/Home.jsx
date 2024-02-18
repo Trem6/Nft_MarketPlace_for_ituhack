@@ -8,12 +8,12 @@ import Trending from "../components/ui/Trending-section/Trending";
 
 import StepSection from "../components/ui/Step-section/StepSection";
 
-const Home = ({marketplace}) => {
+const Home = ({ marketplace, account }) => {
   return (
     <>
       <HeroSection />
-      <LiveAuction marketplace={marketplace} />
-      <Trending marketplace={marketplace} />
+      <LiveAuction marketplace={marketplace} account={account} />
+      <Trending marketplace={marketplace} account={account} />
       <StepSection />
     </>
   );

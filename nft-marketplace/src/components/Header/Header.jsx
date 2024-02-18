@@ -123,14 +123,14 @@ const Header = ({web3Handler, account}) => {
                                 href={`https://etherscan.io/address/${account}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="btn d-flex gap-2 align-items-center">
-                                <button variant="outline-light">
+                                className="d-flex gap-2 align-items-center">
+                                <button variant="outline-light" className="nav__right btn">
                                     {account.slice(0, 5) + '...' + account.slice(38, 42)}
                                 </button>
 
                             </div>
                         ) : (
-                            <button onClick={web3Handler} variant="outline-light">Connect Wallet</button>
+                            <button onClick={web3Handler} className="nav__right btn" variant="outline-light">Connect Wallet</button>
                         )}
             </div>
 

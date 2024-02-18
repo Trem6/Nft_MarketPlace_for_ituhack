@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 
 import "./live-auction.css";
 
-const LiveAuction = ({marketplace}) => {
+const LiveAuction = ({ marketplace, account }) => {
   const [items, setItems] = useState([]);
   
   useEffect(() => {
@@ -20,10 +20,23 @@ const LiveAuction = ({marketplace}) => {
         const uri = await marketplace.tokenURI(item.id);
         const response = await fetch(uri);
         const metadata = await response.json();
+        let collectionCount = 1;
+        let number = 0;
+        let newName = metadata.name;
+        if (Number(item.collection) !== 0) {
+          if (collectionCount === Number(item.collection)) {
+            number++;
+          }
+          else {
+            number = 1;
+            collectionCount++;
+          }
+          newName = metadata.name + "#" + number;
+        }
         items.push({
           id: String(item.id),
           seller: item.seller,
-          name: metadata.name,
+          name: newName,
           description: metadata.description,
           image: metadata.image,
           price: ethers.utils.formatEther(item.price)
@@ -48,7 +61,7 @@ const LiveAuction = ({marketplace}) => {
               </Col>
               {items.slice(0, 4).map((item, idx) => (
                 <Col lg="3" md="4" sm="6" key={idx} className="mb-4">
-                  <NftCard item={item} />
+                  <NftCard item={item} marketplace={marketplace} account={account} />
                 </Col>
               ))}
         </Row>

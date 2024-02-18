@@ -77,6 +77,29 @@ contract NFTMarketplace is ERC721URIStorage {
         return newTokenID;
     }
 
+    function createAndListToken(
+        string memory _tokenURI,
+        uint _collection,
+        uint _price
+    ) public returns (uint) {
+        // increment tokenIds, mint, setURI, emit event
+        _tokenIds.increment();
+        uint newTokenID = _tokenIds.current();
+        _safeMint(msg.sender, newTokenID);
+        _setTokenURI(newTokenID, _tokenURI);
+        idToListedToken[_tokenIds.current()] = ListedNFT(
+            _tokenIds.current(),
+            payable(msg.sender),
+            address(0),
+            0,
+            Status.NonListed,
+            _collection
+        );
+        emit TokenCreated(newTokenID);
+        listToken(newTokenID, _price);
+        return newTokenID;
+    }
+
     function listToken(uint _tokenId, uint _price) public {
         // change bool to true, transfer the token to the contract
         require(_price >= listPrice, "not bigger than or equal to list price");
@@ -198,6 +221,7 @@ contract NFTMarketplace is ERC721URIStorage {
         // setting the new owner
         idToListedToken[_tokenId].owner = highest.buyer;
         idToListedToken[_tokenId].seller = address(0);
+        idToListedToken[_tokenId].price = 0;
 
         // updating the token state
         idToListedToken[_tokenId].status = Status.Executed;

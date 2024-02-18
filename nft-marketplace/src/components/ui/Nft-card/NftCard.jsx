@@ -4,9 +4,15 @@ import { Link } from "react-router-dom";
 import "./nft-card.css";
 
 import Modal from "../Modal/Modal";
+import ListModal from "../ListModal/ListModal"
 
-const NftCard = ({item, marketplace}) => {
+const NftCard = ({item, marketplace, account}) => {
   const [showModal, setShowModal] = useState(false);
+  const [showListModal, setShowListModal] = useState(false);
+
+  const executeSale = async () => {
+    await marketplace.executeSale(parseInt(item.id));
+  };
 
   return (
     <div className="single__nft__card">
@@ -38,14 +44,32 @@ const NftCard = ({item, marketplace}) => {
         </div>
 
         <div className=" mt-3 d-flex align-items-center justify-content-between">
-          <button
-            className="bid__btn d-flex align-items-center gap-1"
-            onClick={() => setShowModal(true)}
-          >
-            <i class="ri-shopping-bag-line"></i> Place Bid
-          </button>
+          {
+            item.status === 0 ? (
+              <button
+                className="bid__btn d-flex align-items-center gap-1"
+                onClick={() => setShowListModal(true)}>
+                <i class="ri-file-list-3-line"></i>List the NFT
+              </button>
+            ) : (
+              account === item.seller.toLowerCase() ? (
+                <button
+                  className="bid__btn d-flex align-items-center gap-1"
+                  onClick={executeSale}>
+                  <i class="ri-money-dollar-circle-line"></i>Execute Sale
+                </button>
+              ) : (
+                <button
+                  className="bid__btn d-flex align-items-center gap-1"
+                  onClick={() => setShowModal(true)}>
+                  <i className="ri-shopping-bag-line"></i> Place Bid
+                </button>
+              )
+            )
+          }
 
           {showModal && <Modal setShowModal={setShowModal} item={item} marketplace={marketplace} />}
+          {showListModal && <ListModal setShowListModal={setShowListModal} item={item} marketplace={marketplace} />}
         </div>
       </div>
     </div>
