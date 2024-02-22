@@ -45,7 +45,7 @@ const NftCard = ({item, marketplace, account}) => {
 
         <div className=" mt-3 d-flex align-items-center justify-content-between">
           {
-            item.status === 0 ? (
+            item.status === 0 || item.status === 2 ? (
               <button
                 className="bid__btn d-flex align-items-center gap-1"
                 onClick={() => setShowListModal(true)}>
